@@ -1,0 +1,349 @@
+---
+title: "EPC SCRIPT DASHBORD"
+author: "MALANDA Cédric"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+setwd("C:/Users/mmala/Downloads/Docs EPC 14 août 2023/Suivi collecte/DASH BORD EPC RGPH-5")
+```
+
+
+```{r}
+library(pacman)
+p_load(tidyverse,expss,readxl,googlesheets4,googledrive,datefixR,expss, questionr, haven, labelled,googlesheets4)
+```
+
+## Importation des données
+```{r}
+CIMEN <- read_excel("menepc_dict.xlsx", 
+    sheet = "CIMEN")
+
+LISTEM <- read_excel("menepc_dict.xlsx", 
+    sheet = "LISTEM")
+
+```
+
+
+```{r}
+glimpse(head(CIMEN))
+```
+
+```{r}
+MEN <- select(CIMEN,
+        DEP = DEPARTEMENT,                              
+        COM_DIS = `COMMMUNE/District`, 
+        MILIEU = `MILIEU DE RESIDENCE`,
+        ARR_CU_CR = `ARRONDISSEMENT/CU-CR`,                          
+        ZD = `ZONE DENOMBREMENT`,
+        Q_V = `QUARTIER/VILLAGE` ,
+        ILOT_CAMP = `ILOT/HAMEAU-CAMPEMENT`,
+        NUM_PARCEL = `N°PARCELLE`,                                    
+       NUM_LOG = `N°LOGEMENT`,                                  
+       CD_ENQ = `Code de l'agent recenseur`,                     
+       TYPE_LOC = `Type de localité`,                              
+       JOUR_VIEW = `Jour Interview`,                                
+        MOIS_VIEW = `Mois Interview`, 
+       ANNEE_VIEW = `Annee Interview`,
+        CD_ENQ1 = `Code l'agent recenseur`,                        
+       ZC = `Numéro de la zone de contrôleur ou de l'équipe`,
+       AD_MAC = `Adresse MAC de la tablette`,                    
+       NOM_CM = `Nom du chef de ménage`,                         
+       LAT = Lattitude,                                     
+       LON = Longitude,                                     
+       NUM_MEN = `NUMERO DE MENAGE`, 
+       NOM_CM = `Nom du chef de ménage`,
+        STRATE = Strate
+       )
+
+MEMBR <- select(LISTEM,
+        DEP = DEPARTEMENT,                              
+        COM_DIS = `COMMMUNE/District`, 
+        MILIEU = `MILIEU DE RESIDENCE`,
+        ARR_CU_CR = `ARRONDISSEMENT/CU-CR`,                          
+        ZD = `ZONE DENOMBREMENT`,
+        Q_V = `QUARTIER/VILLAGE` ,
+        ILOT_CAMP = `ILOT/HAMEAU-CAMPEMENT`,
+        NUM_PARCEL = `N°PARCELLE`,                                    
+       NUM_LOG = `N°LOGEMENT`,  
+       NUM_MEN = `NUMERO DE MENAGE`,
+       CD_ENQ = `Code de l'agent recenseur`,
+       NUM_MEMBR =  `NUMERO D'ORDRE`,
+       NOM_MEMBR = `NOM(S)`,
+       PRENOM_MEMBR = `PRENOM(S)`,
+       SEXE = SEXE,
+        LIEN_PARENT = `LIEN DE PARENTE AVEC LE CHEF DE MENAGE`
+       )
+```
+
+```{r}
+glimpse(MEMBR)
+```
+
+
+```{r}
+#freq(enum$DEP ,total = TRUE)
+MEN <- MEN %>% mutate(DATE_VIEW = make_date(ANNEE_VIEW,MOIS_VIEW,JOUR_VIEW))
+view(MEN)
+```
+
+```{r}
+glimpse(MEN)
+```
+
+
+```{r}
+MEN <- MEN %>% mutate(DEP = as.character(DEP),COM_DIS = as.character(COM_DIS), MILIEU = as.character(MILIEU),
+                        ARR_CU_CR = as.character(ARR_CU_CR),
+                        ZD = as.character(ZD),
+                        ZC = as.character(ZC),
+                        Q_V = as.character(Q_V),
+                        ILOT_CAMP = as.character(ILOT_CAMP),
+                        NUM_PARCEL = as.character(NUM_PARCEL),
+                        NUM_LOG = as.character(NUM_LOG),
+                        NUM_MEN = as.character(NUM_MEN )
+                        )
+
+MEN <- MEN %>% mutate(ZC = paste0("EQ","_",str_pad(ZC,2,pad = "0")))
+```
+
+```{r}
+MEMBR <- MEMBR %>% mutate(DEP = as.character(DEP),
+                        COM_DIS = as.character(COM_DIS),
+                        MILIEU = as.character(MILIEU),
+                        ARR_CU_CR = as.character(ARR_CU_CR),
+                        ZD = as.character(ZD),
+                        Q_V = as.character(Q_V),
+                        ILOT_CAMP = as.character(ILOT_CAMP),
+                        NUM_PARCEL = as.character(NUM_PARCEL),
+                        NUM_LOG = as.character(NUM_LOG),
+                        NUM_MEN = as.character(NUM_MEN ),
+                        NUM_MEMBR = as.character(NUM_MEMBR),
+                        SEXE = as.character(SEXE),
+                        LIEN_PARENT = as.character(LIEN_PARENT)
+
+                        )
+```
+
+
+```{r}
+#view(MEN)
+#glimpse(MEMBR)
+```
+
+# Suppression des NOM_CM vides 
+```{r}
+MEN <- MEN[complete.cases(MEN$NOM_CM),]
+MEN <- MEN %>% mutate(DEP_NAME = case_when(
+ DEP == "1" ~	"Kouilou",			
+ DEP == "2" ~	"Niari",			
+ DEP == "3" ~	"Lékoumou",			
+ DEP == "4"	~ "Bouenza",			
+ DEP == "5"	~ "Pool",			
+ DEP == "6" ~	"Plateaux",			
+ DEP == "7"	~ "Cuvette",			
+ DEP == "8"	~ "Cuvette-Ouest",			
+ DEP == "9" ~	"Sangha",			
+ DEP == "10" ~	"Likouala",
+ DEP == "11" ~	"Brazzaville",			
+ DEP ==  "12" ~	"Pointe-Noire"
+),
+MILIEU_NAME = if_else(MILIEU ==1, "Urbain","Rural")
+)
+#freq(enum$DEP ,total = TRUE)
+
+```
+
+```{r}
+MEMBR <- MEMBR[complete.cases(MEMBR$PRENOM_MEMBR),]
+MEMBR <- MEMBR %>% mutate(DEP_NAME = case_when(
+ DEP == "1" ~	"Kouilou",			
+ DEP == "2" ~	"Niari",			
+ DEP == "3" ~	"Lékoumou",			
+ DEP == "4"	~ "Bouenza",			
+ DEP == "5"	~ "Pool",			
+ DEP == "6" ~	"Plateaux",			
+ DEP == "7"	~ "Cuvette",			
+ DEP == "8"	~ "Cuvette-Ouest",			
+ DEP == "9" ~	"Sangha",			
+ DEP == "10" ~	"Likouala",
+ DEP == "11" ~	"Brazzaville",			
+ DEP ==  "12" ~	"Pointe-Noire"
+),
+SEXE = if_else(MILIEU ==1, "Masculin","Féminin")
+)
+```
+
+```{r}
+glimpse(MEN)
+```
+
+
+```{r}
+# Création identifiants ménage,ZD et idividu
+MEN <- MEN %>% mutate(DEP = str_pad(DEP,2,pad = "0"),
+                        COM_DIS = str_pad(COM_DIS,2,pad = "0"),
+                        ARR_CU_CR = str_pad(ARR_CU_CR,2,pad = "0"),
+                        ZD = str_pad(ZD,3,pad = "0"),
+                        Q_V = str_pad(Q_V,3,pad = "0"),
+                        ILOT_CAMP = str_pad(ILOT_CAMP,3,pad = "0"),
+                        NUM_PARCEL = str_pad(NUM_PARCEL,3,pad = "0"),
+                        NUM_LOG = str_pad(NUM_LOG,3,pad = "0"),
+                        NUM_MEN = str_pad(NUM_MEN,3,pad = "0")
+
+)
+
+MEN <- MEN %>%  unite(ID_MEN,DEP,COM_DIS,ARR_CU_CR,ZD,Q_V,ILOT_CAMP,MILIEU, NUM_PARCEL, NUM_LOG, NUM_MEN, na.rm = TRUE, sep = "", remove = FALSE)
+
+MEN <- MEN %>%  unite(ID_ZD,DEP,COM_DIS,ARR_CU_CR,MILIEU,ZD, na.rm = TRUE, sep = "", remove = FALSE)
+
+	
+glimpse(MEN)
+```
+
+
+```{r}
+# Création identifiants ménage,ZD et idividu
+MEMBR <- MEMBR %>% mutate(DEP = str_pad(DEP,2,pad = "0"),
+                        COM_DIS = str_pad(COM_DIS,2,pad = "0"),
+                        ARR_CU_CR = str_pad(ARR_CU_CR,2,pad = "0"),
+                        ZD = str_pad(ZD,3,pad = "0"),
+                        Q_V = str_pad(Q_V,3,pad = "0"),
+                        ILOT_CAMP = str_pad(ILOT_CAMP,3,pad = "0"),
+                        NUM_PARCEL = str_pad(NUM_PARCEL,3,pad = "0"),
+                        NUM_LOG = str_pad(NUM_LOG,3,pad = "0"),
+                        NUM_MEN = str_pad(NUM_MEN,3,pad = "0"),
+                        NUM_MEMBR = str_pad(NUM_MEMBR,2,pad = "0") 
+
+)
+
+
+MEMBR <- MEMBR %>%  unite(ID_MEN,DEP,COM_DIS,ARR_CU_CR,ZD,Q_V,ILOT_CAMP,MILIEU, NUM_PARCEL, NUM_LOG, NUM_MEN, na.rm = TRUE, sep = "", remove = FALSE)
+
+MEMBR <- MEMBR %>%  unite(ID_IND,DEP,COM_DIS,ARR_CU_CR,ZD,Q_V,ILOT_CAMP,MILIEU, NUM_PARCEL, NUM_LOG, NUM_MEN,NUM_MEMBR, na.rm = TRUE, sep = "", remove = FALSE)
+
+MEMBR <- MEMBR %>%  unite(ID_ZD,DEP,COM_DIS,ARR_CU_CR,MILIEU,ZD, na.rm = TRUE, sep = "", remove = FALSE)
+```
+
+```{r}
+glimpse(MEMBR)
+```
+
+```{r}
+d1 <- summarize(group_by(MEN,ID_ZD), MenNumerote = n())
+sum(d$MenNumerote)
+```
+
+```{r}
+d
+```
+
+
+
+```{r}
+COMPARAISON <- read_excel("COMPARAISON.xlsx")
+glimpse(COMPARAISON)
+```
+
+```{r}
+COMPARAISON <- COMPARAISON %>% mutate(DEP = as.character(DEP),
+                      COM_DIS = as.character(COM_DIS),
+                      ARR_CU_CR = as.character(ARR_CU_CR),
+                      ZD = as.character(ZD),
+                      MILIEU = as.character(MILIEU)
+          
+                )
+
+
+COMPARAISON <- COMPARAISON %>% mutate(DEP = str_pad(DEP,2,pad = "0"),
+                        COM_DIS = str_pad(COM_DIS,2,pad = "0"),
+                        ARR_CU_CR = str_pad(ARR_CU_CR,2,pad = "0"),
+                        ZD = str_pad(ZD,3,pad = "0")
+                        ) 
+
+COMPARAISON <- COMPARAISON %>%  unite(ID_ZD,DEP,COM_DIS,ARR_CU_CR,MILIEU,ZD, na.rm = TRUE, sep = "", remove = FALSE)
+
+
+```
+
+```{r}
+glimpse(COMPARAISON)
+```
+
+
+```{r} 
+# Fusion des données
+COMPARAISON1 <- COMPARAISON  %>% left_join(d)
+ #COMPARAISON <- COMPARAISON %>% left_join(d)
+```
+
+```{r}
+```
+
+
+```{r}
+view(COMPARAISON1)
+```
+
+
+```{r}
+#view(COMPARAISON$NumZD)
+
+sum(COMPARAISON1$MenNumerote, na.rm = TRUE)
+sum(d$MenNumerote)
+```
+
+```{r}
+dim(d)
+dim(COMPARAISON)
+```
+
+
+
+
+```{r}
+gs4_auth(email = "mmalandacedric@gmail.com")
+v <- gs4_find()
+
+```
+
+
+```{r}
+ss ="1IGzL5Dn4JiWJTS7kGJmaJCzoQ4rRLHSRXt2KLkM0kgk"
+#sheet_write(COMPARAISON , ss = ss, #"18hlbIZx0tojEKSgGYORFn8Jj3FUCcB6T8_kcZoE2Y4M",
+            #sheet = "COMPARAISON")
+
+gs4_create(
+  "EPC_DB_IND",
+    sheets = MEMBR
+)
+```
+
+```{r}
+sheet_write(MEN, ss = ss, #"18hlbIZx0tojEKSgGYORFn8Jj3FUCcB6T8_kcZoE2Y4M",
+            sheet = "MENAGE")
+
+sheet_write(COMPARAISON , ss = ss, #"18hlbIZx0tojEKSgGYORFn8Jj3FUCcB6T8_kcZoE2Y4M",
+            sheet = "COMPARAISON")
+
+sheet_write(enum , ss = ss, #"18hlbIZx0tojEKSgGYORFn8Jj3FUCcB6T8_kcZoE2Y4M",
+            sheet = "INDIVIDUS")
+```
+```{r}
+glimpse(MEMBR)
+```
+
+```{r}
+write_csv(MEN,"BD_MENAGE.CSV")
+write_csv(MEMBR,"MEMBR.CSV")
+```
+
+
+
+

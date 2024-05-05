@@ -1,0 +1,300 @@
+---
+title: "DASH BORD SCRIPT"
+author: "MALANDA Cédric"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+setwd("C:/Users/mmala/Downloads/Docs EPC 14 août 2023/Suivi collecte/DASH BORD EPC RGPH-5")
+```
+
+# Préparation des données
+
+## Importation des packages
+
+
+```{r}
+library(pacman)
+p_load(tidyverse,expss,readxl,googlesheets4,googledrive,datefixR,expss, questionr, haven, labelled,googlesheets4)
+```
+
+
+## Importation des données
+```{r}
+CIMEN <- read_excel("menepc_dict.xlsx", 
+    sheet = "CIMEN")
+```
+
+
+```{r}
+glimpse(head(CIMEN))
+```
+
+```{r}
+#look_for(CIMEN)
+```
+
+```{r}
+enum <- select(CIMEN,
+        DEP = DEPARTEMENT,                              
+        COM_DIS = `COMMMUNE/District`, 
+        MILIEU = `MILIEU DE RESIDENCE`,
+        ARR_CU_CR = `ARRONDISSEMENT/CU-CR`,                          
+        ZD = `ZONE DENOMBREMENT`,                             
+        NUM_PARCEL = `N°PARCELLE`,                                    
+       NUM_LOG = `N°LOGEMENT`,                                  
+       CD_ENQ = `Code de l'agent recenseur`,                     
+       TYPE_LOC = `Type de localité`,                              
+       JOUR_VIEW = `Jour Interview`,                                
+        MOIS_VIEW = `Mois Interview`, 
+       ANNEE_VIEW = `Annee Interview`,
+        CD_ENQ1 = `Code l'agent recenseur`,                        
+       ZC = `Numéro de la zone de contrôleur ou de l'équipe`,
+       AD_MAC = `Adresse MAC de la tablette`,                    
+       NOM_CM = `Nom du chef de ménage`,                         
+       LAT = Lattitude,                                     
+       LON = Longitude,                                     
+       NUM_MEN = `Numéro séquentiel de ménage`, 
+       NOM_CM = `Nom du chef de ménage`,
+        STRATE = Strate
+       )
+```
+
+
+
+```{r}
+#freq(enum$DEP ,total = TRUE)
+enum <- enum %>% mutate(DATE_VIEW = make_date(ANNEE_VIEW,MOIS_VIEW,JOUR_VIEW))
+view(enum)
+```
+
+```{r}
+enum <- enum %>% mutate(DEP = as.character(DEP),COM_DIS = as.character(COM_DIS), MILIEU = as.character(MILIEU),
+                        ARR_CU_CR = as.character(ARR_CU_CR),
+                        ZD = as.character(ZD),
+                        ZC = as.character(ZC)
+                        )
+
+enum <- enum %>% mutate(ZC = paste0("EQ","_",str_pad(ZC,2,pad = "0")))
+```
+
+```{r}
+enum
+```
+
+
+# Suppression des NOM_CM vides 
+```{r}
+enum <- enum[complete.cases(enum$NOM_CM),]
+enum <- enum %>% mutate(DEP = case_when(
+  DEP == "1" ~	"Kouilou",			
+   DEP == "2" ~	"Niari",			
+ DEP == "3" ~	"Lékoumou",			
+ DEP == "4"	~ "Bouenza",			
+ DEP == "5"	~ "Pool",			
+ DEP == "6" ~	"Plateaux",			
+ DEP == "7"	~ "Cuvette",			
+ DEP == "8"	~ "Cuvette-Ouest",			
+ DEP == "9" ~	"Sangha",			
+ DEP == "10" ~	"Likouala",
+ DEP == "11" ~	"Brazzaville",			
+ DEP ==  "12" ~	"Pointe-Noire"
+))
+#freq(enum$DEP ,total = TRUE)
+
+```
+
+```{r}
+#head(enum$DEP)
+view(enum)
+```
+
+```{r}
+
+enum <- enum %>% mutate(MILIEU = if_else(MILIEU ==1, "Urbain","Rural")) 
+
+enum
+#MenNumerote = sum(d$TailMenumer)
+```
+
+
+
+```{r}
+d <- summarize(group_by(enum,DEP,COM_DIS,MILIEU, ARR_CU_CR,ZC,ZD), MenNumerote = n())
+#MenNumerote = sum(d$MenNumerote)
+```
+
+
+
+```{r}
+d
+
+```
+```{r}
+#view(dep)
+```
+
+
+
+
+```{r}
+gs4_auth(email = "mmalandacedric@gmail.com")
+#gs4_find() 
+```
+
+```{r}
+numerotation <- d
+#numerotation
+```
+
+```{r}
+gs4_find("EPC_DB") %>%
+  googledrive::drive_trash()
+```
+
+
+
+```{r}
+# Création du dossier Excel devant contenir les feuilles
+#Ce dossier ne se crée q'une seule foit; à la première utilisation
+
+
+gs4_create(
+  "EPC_DB_vf",
+    sheets = numerotation
+)
+
+
+
+```
+
+
+
+```{r}
+#Aimportation des différents fichiers
+
+'DEPTMNT <- read_excel("COMPARAISON.xlsx", 
+    sheet = "Département", range = "A1:B13")
+#dep'
+
+Carto_denombr <- read_excel("COMPARAISON.xlsx", 
+    sheet = "Carto_denombr")
+
+
+
+
+
+'EQUIPE <- read_excel("COMPARAISON.xlsx", 
+    sheet = "Equipe")
+
+CARTO <- read_excel("COMPARAISON.xlsx", 
+    sheet = "Carto")
+
+DENOMBR <- read_excel("COMPARAISON.xlsx", 
+    sheet = "Dénombrement")
+'
+```
+```{r}
+Carto_denombr <- Carto_denombr %>% mutate(NumZD = as.character(NumZD),
+                                          Code_CUCRArr = as.character(Code_CUCRArr),
+                                          PopDenombr = as.double(PopDenombr))
+glimpse(Carto_denombr)
+```
+
+
+```{r}
+glimpse(d)
+
+```
+
+```{r}
+
+names(Carto_denombr)
+```
+
+
+
+
+```{r}
+# Fusion des données 
+"BDASH <- enum %>% left_join(Carto_denombr, by = c('DEP' = 'LibelléDépartement','ARR_CU_CR' = Code_CUCRArr','ZC' = 'EQUIPE' ,  'ZD' = 'NumZD' ))"
+```
+
+
+
+```{r}
+# Récupération de l'identifiant drive du fichier EPC_DB
+v <- gs4_find()# "1IGzL5Dn4JiWJTS7kGJmaJCzoQ4rRLHSRXt2KLkM0kgk"
+#v$id
+```
+
+```{r}
+ #m <- list(DEPTMNT,ZD,EQUIPE, CARTO, DENOMBR)
+#length(m)
+#m[[1]]
+#for (k in seq_along(m)){print(m[[k]])}
+```
+
+
+```{r}
+# Lien d'accès au fichier sur drive
+#https://docs.google.com/spreadsheets/d/18hlbIZx0tojEKSgGYORFn8Jj3FUCcB6T8_kcZoE2Y4M/edit#gid=16471916
+```
+
+```{r}
+
+ss = "1IGzL5Dn4JiWJTS7kGJmaJCzoQ4rRLHSRXt2KLkM0kgk" #identifiant du fichier sur drive = v$id
+
+'ss = numerotation <- d
+gs4_create(
+  "EPC_DB",
+    sheets = numerotation
+)'
+```
+
+```{r}
+sheet_write(d, ss = ss, #"18hlbIZx0tojEKSgGYORFn8Jj3FUCcB6T8_kcZoE2Y4M",
+            sheet = "TailleZDNum")
+
+sheet_write(Carto_denombr , ss = ss, #"18hlbIZx0tojEKSgGYORFn8Jj3FUCcB6T8_kcZoE2Y4M",
+            sheet = "Carto_denombr")
+
+sheet_write(enum , ss = ss, #"18hlbIZx0tojEKSgGYORFn8Jj3FUCcB6T8_kcZoE2Y4M",
+            sheet = "EnumEPC")
+
+```
+
+
+
+```{r}
+# Ajout des feuilles dans le classeur Excel crée
+
+sheet_write(Carto_denombr, ss = ss, #"18hlbIZx0tojEKSgGYORFn8Jj3FUCcB6T8_kcZoE2Y4M",
+            sheet = "Carto_denombr")
+
+#sheet_write(EQUIPE , ss = ss, #"18hlbIZx0tojEKSgGYORFn8Jj3FUCcB6T8_kcZoE2Y4M",
+           # sheet = "EQUIPE")
+
+#sheet_write(ZD, ss = ss, #"18hlbIZx0tojEKSgGYORFn8Jj3FUCcB6T8_kcZoE2Y4M",
+            #sheet = "ZD")
+
+#sheet_write(CARTO , ss = ss, #"18hlbIZx0tojEKSgGYORFn8Jj3FUCcB6T8_kcZoE2Y4M",
+            #sheet = "CARTO")
+
+#sheet_write(DENOMBR ,  ss = ss, #"18hlbIZx0tojEKSgGYORFn8Jj3FUCcB6T8_kcZoE2Y4M",
+            #sheet = "DENOMBREMENT")
+```
+
+
+
+
+
+
+
+
+
